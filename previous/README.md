@@ -1,4 +1,4 @@
-# Prepline (free), v3.4.9-r4
+# Prepline (free), v3.4.9-r5
 
 Prepline by Autoprod sorts a kitchen preplist into prep lists by dish, station and team section.
 Free and complete: every tool is on. No account, no sign-up, no licence. Open it at https://autoprod-dev.github.io/prepline-free/

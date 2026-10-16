@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<meta name="prepline-version" content="3.4.9-r5">
+<meta name="prepline-version" content="3.4.9-r6">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -486,10 +486,6 @@ var LICENSE_CONFIG = {
   .al-chip{display:inline-block; font:700 9.5px/1 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; letter-spacing:.03em; padding:2px 5px; margin:0 0 0 4px; border-radius:4px; background:#FBE6D6; color:#8A3B12; border:1px solid #E9C3A3; vertical-align:middle;}
   .po-chip{display:inline-block; font:600 10px/1.2 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; padding:2px 6px; margin:2px 0 0 4px; border-radius:4px; background:#E4F0E6; color:#22543D; border:1px solid #B5D3BC; vertical-align:middle; white-space:normal;}
   .po-ref-l{font-weight:800; letter-spacing:.06em; margin-right:2px;}
-  .dish-thumbs{display:flex; gap:12px; flex-wrap:wrap; margin:8px 0 12px;} .dish-thumb{margin:0; width:4.5cm; max-width:46%;} .dish-photo-thumb{width:100%; height:auto; border-radius:6px; border:1px solid var(--line); display:block;} .dish-thumb figcaption{font-size:11.5px; font-weight:600; margin-top:3px; line-height:1.25;}
-  @media print{ .dish-thumbs.photos-print{display:flex; gap:10px; margin:6px 0 10px; page-break-inside:avoid;} .dish-thumb{width:4.5cm; max-width:none;} .dish-photo-thumb{border-radius:0;} .dish-thumb figcaption{font-size:9pt;} }
-  .dish-photos{display:flex; gap:12px; flex-wrap:wrap; margin:8px 0 12px;} .dish-photo{width:7cm; max-width:100%; height:auto; border-radius:6px; border:1px solid var(--line); display:block;}
-  @media print{ .dish-photos.photos-print{display:flex; gap:10px; margin:6px 0 10px; page-break-inside:avoid;} .dish-photo{width:7cm; border-radius:0;} }
   .orig-page{margin:12px 0; text-align:center;} .orig-img{max-width:100%; height:auto; border:1px solid var(--line);} .orig-head{text-align:left; margin-bottom:4px;}
   @media print{ .orig-page{page-break-after:always; margin:0;} .orig-tab h3,.orig-tab>.meta{display:none;} }
   .yl-chip{display:inline-block; font:600 10.5px/1.25 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; padding:2px 6px; border-radius:4px; border:1px solid; white-space:normal;}
@@ -832,7 +828,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r5</div>
+    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r6</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1297,7 +1293,6 @@ let paxByDish = {}; // dish name -> number (pax count for that dish)
 // PDF only: a snapshot image of each dish's original production-tool front page (the
 // method, plating notes, everything a parsed ingredient list leaves out), so the team
 // can check it here instead of tracking someone down who still has the original file.
-let dishPhotoStore = {};   // v3.4.9-r4: photos from spreadsheet tabs: dish -> [dataUrl]
 let originalPageImages = {}; // dish name -> [{dataUrl, pageLabel}, ...] — main page first, then each sub-recipe's own page
 let methodCrops = {}; // dish name -> [{dataUrl, pageLabel}, ...] — just the cropped Method: region of each of those same pages
 let originalImagesTruncated = false; // true once a save had to drop images to fit storage
@@ -1373,7 +1368,7 @@ function saveOnetimeSession(){
   try{
     // Try with the original-page images included first — they're the whole point of
     // this feature, so only drop them if they genuinely don't fit.
-    localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify({...base, originalPageImages, methodCrops, dishPhotoStore}));
+    localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify({...base, originalPageImages, methodCrops}));
     originalImagesTruncated = false;
   }catch(e){
     try{
@@ -1426,12 +1421,10 @@ function loadOnetimeSession(){
           if (!validDish.has(dish)) return;
           const v = s.originalPageImages[dish];
           const arr = Array.isArray(v) ? v : (okImg(v) ? [v] : []);   // tolerate an old single-image save from before this was a list
-          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}, Array.isArray(x.photos)?{photos:x.photos.filter(u=>typeof u==='string' && u.startsWith('data:image/')).slice(0,3)}:{}));
+          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}));
           if (clean.length) originalPageImages[dish] = clean;
         });
       }
-      dishPhotoStore = {};
-      if (isObj(s.dishPhotoStore)){ const vd = new Set(ROWS.map(r=>r.dish)); Object.keys(s.dishPhotoStore).forEach(d=>{ if (vd.has(d) && Array.isArray(s.dishPhotoStore[d])) { const a = s.dishPhotoStore[d].filter(u=>typeof u==='string' && u.startsWith('data:image/')).slice(0,2); if (a.length) dishPhotoStore[d] = a; } }); }
       methodCrops = {};
       if (isObj(s.methodCrops)){
         const validDish = new Set(ROWS.map(r=>r.dish));
@@ -1439,7 +1432,7 @@ function loadOnetimeSession(){
         Object.keys(s.methodCrops).forEach(dish=>{
           if (!validDish.has(dish)) return;
           const arr = Array.isArray(s.methodCrops[dish]) ? s.methodCrops[dish] : [];
-          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}, Array.isArray(x.photos)?{photos:x.photos.filter(u=>typeof u==='string' && u.startsWith('data:image/')).slice(0,3)}:{}));
+          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}));
           if (clean.length) methodCrops[dish] = clean;
         });
       }
@@ -1518,7 +1511,7 @@ function setWeeklyStatus(msg, cls){
   if (el){ el.textContent = msg; el.className = 'status' + (cls ? ' '+cls : ''); }
 }
 function generateWeekly(){
-  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {}; originalPageImages = {}; dishPhotoStore = {}; methodCrops = {};
+  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
   let includedCount = 0;
   Object.keys(dishDatabase).forEach(dish=>{
     const sel = weeklySelection[dish];
@@ -2854,51 +2847,6 @@ function pdfRoundTo(n,d){ const p=Math.pow(10,d); return Math.round(n*p)/p; }
 // production-tool front page (method, plating notes, everything the ingredient parser
 // doesn't capture), kept so the team can check it here instead of hunting for the file.
 // Scale/quality are tuned to stay legible while keeping localStorage usage reasonable.
-// v3.4.9-r4: dish photos. The photos embedded in a production tool's front page are pulled out with pdf.js
-// (image operators + their on-page size) so they can sit with that dish's own prep list section. Logos, icons,
-// rules and other tiny pictures are ignored; at most 2 photos per dish, re-encoded as moderate JPEGs.
-async function pdfExtractDishPhotos(page){
-  const out = [];
-  try{
-    const OPS = pdfjsLib.OPS; if (!OPS || OPS.paintImageXObject === undefined) return out;
-    const ol = await page.getOperatorList();
-    const mul = (a,b)=>[a[0]*b[0]+a[1]*b[2], a[0]*b[1]+a[1]*b[3], a[2]*b[0]+a[3]*b[2], a[2]*b[1]+a[3]*b[3], a[4]*b[0]+a[5]*b[2]+b[4], a[4]*b[1]+a[5]*b[3]+b[5]];
-    let ctm = [1,0,0,1,0,0]; const st = [], cands = [], seen = new Set();
-    for (let i=0; i<ol.fnArray.length; i++){
-      const fn = ol.fnArray[i], a = ol.argsArray[i];
-      if (fn === OPS.save) st.push(ctm.slice());
-      else if (fn === OPS.restore){ if (st.length) ctm = st.pop(); }
-      else if (fn === OPS.transform) ctm = mul(a, ctm);
-      else if (fn === OPS.paintImageXObject){
-        const wPt = Math.hypot(ctm[0], ctm[1]), hPt = Math.hypot(ctm[2], ctm[3]);
-        if (wPt >= 70 && hPt >= 50 && !seen.has(a[0])){ seen.add(a[0]); cands.push({name:a[0], wPt, hPt, area:wPt*hPt}); }
-      }
-    }
-    cands.sort((x,y)=>y.area-x.area);
-    for (const c of cands){
-      if (out.length >= 2) break;
-      const store = String(c.name).startsWith('g_') ? page.commonObjs : page.objs;
-      const o = await new Promise(res=>{ let done = false; const t = setTimeout(()=>{ if (!done){ done = true; res(null); } }, 4000); try{ store.get(c.name, v=>{ if (!done){ done = true; clearTimeout(t); res(v); } }); }catch(e){ clearTimeout(t); res(null); } });
-      if (!o) continue;
-      const w = o.width || (o.bitmap && o.bitmap.width), h = o.height || (o.bitmap && o.bitmap.height);
-      if (!w || !h || w < 150 || h < 100) continue;                   // tiny: logo / icon
-      const asp = w / h; if (asp < 0.35 || asp > 3) continue;          // rules, banners
-      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const cx = cv.getContext('2d');
-      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
-      if (o.bitmap) cx.drawImage(o.bitmap, 0, 0);
-      else if (o.data && (o.kind === 2 || o.kind === 3)){
-        const id = cx.createImageData(w, h), d = id.data, src = o.data;
-        if (o.kind === 3) d.set(src.subarray ? src.subarray(0, d.length) : src);
-        else for (let k=0, j=0; k<w*h; k++){ d[j++] = src[k*3]; d[j++] = src[k*3+1]; d[j++] = src[k*3+2]; d[j++] = 255; }
-        cx.putImageData(id, 0, 0);
-      } else continue;
-      const sc = Math.min(1, 720 / w), oc = document.createElement('canvas'); oc.width = Math.round(w*sc); oc.height = Math.round(h*sc);
-      const ox = oc.getContext('2d'); ox.fillStyle = '#fff'; ox.fillRect(0, 0, oc.width, oc.height); ox.drawImage(cv, 0, 0, oc.width, oc.height);
-      const url = oc.toDataURL('image/jpeg', 0.8); if (url && url !== 'data:,') out.push(url);
-    }
-  }catch(e){ console.warn('Dish photo extraction failed:', e && e.message); }
-  return out;
-}
 let pdfRenderErrors = []; // collected across a whole upload so the status message can report what actually happened
 async function pdfRenderPageImage(page, label){
   try{
@@ -3369,7 +3317,7 @@ async function handlePdfFiles(fileList, opts){
     ROWS = ROWS.slice(); paxByDish = {...paxByDish}; eventDayOverride = {...eventDayOverride}; eventDateByDish = {...eventDateByDish};
     originalPageImages = {...originalPageImages}; methodCrops = {...methodCrops};
   } else {
-    ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {}; originalPageImages = {}; dishPhotoStore = {}; methodCrops = {};
+    ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
   }
   let totalTasks = 0;
   const dishNames = [];
@@ -3450,7 +3398,6 @@ async function handlePdfFiles(fileList, opts){
         if (!originalPageImages[snap.dishTitle]) originalPageImages[snap.dishTitle] = [];
         const ent = {dataUrl: rendered.url, pageLabel: snap.pageLabel+' ('+snap.fileName+', page '+(snap.pageIndex+1)+')'};
         try{ const geo = pdfRefGeometry(snap.items[snap.pageIndex], rendered.scale); if (geo) Object.assign(ent, geo); }catch(e){}
-        if (snap.pageLabel === 'Main page'){ const ph = await pdfExtractDishPhotos(snap.pages[snap.pageIndex]); if (ph.length) ent.photos = ph; }
         originalPageImages[snap.dishTitle].push(ent);
         const region = pdfFindMethodRegion(snap.items[snap.pageIndex]);
         const cropUrl = cropMethodRegion(rendered.canvas, rendered.scale, region);
@@ -3507,39 +3454,6 @@ document.getElementById('fileInput').addEventListener('change', e=>{
   });
 });
 
-// v3.4.9-r4: pictures embedded in a workbook tab (xl/drawings -> xl/media) go with the dish that tab produced.
-async function xlsxExtractTabPhotos(data){
-  const res = {};
-  try{
-    const wb2 = XLSX.read(data, {type:'array', bookFiles:true}); const F = wb2.files; if (!F) return res;
-    const txt = p => { const e = F[p] || F['/'+p]; if (!e) return ''; const c = e.content; return typeof c === 'string' ? c : (c ? new TextDecoder().decode(c) : ''); };
-    const bin = p => { const e = F[p] || F['/'+p]; return e && e.content && typeof e.content !== 'string' ? e.content : null; };
-    const attrs = (xml, tag) => [...xml.matchAll(new RegExp('<'+tag+'\\b([^>]*)/?>','g'))].map(m=>{ const o = {}; [...m[1].matchAll(/([\w:]+)="([^"]*)"/g)].forEach(a=>o[a[1]] = a[2]); return o; });
-    const norm = (base, t) => { if (t.startsWith('/')) return t.slice(1); const parts = base.split('/'); parts.pop(); t.split('/').forEach(x=>{ if (x==='..') parts.pop(); else if (x!=='.') parts.push(x); }); return parts.join('/'); };
-    const wbRels = {}; attrs(txt('xl/_rels/workbook.xml.rels'), 'Relationship').forEach(r=>wbRels[r.Id] = norm('xl/workbook.xml', r.Target));
-    for (const sh of attrs(txt('xl/workbook.xml'), 'sheet')){
-      const sp = wbRels[sh['r:id']]; if (!sp) continue;
-      const srel = sp.replace(/([^/]+)$/, '_rels/$1.rels'), imgs = [];
-      for (const r of attrs(txt(srel), 'Relationship').filter(r=>/drawing$/.test(r.Type||''))){
-        const dp = norm(sp, r.Target), drel = dp.replace(/([^/]+)$/, '_rels/$1.rels');
-        attrs(txt(drel), 'Relationship').filter(x=>/image$/.test(x.Type||'')).forEach(x=>imgs.push(norm(dp, x.Target)));
-      }
-      const urls = [];
-      for (const ip of imgs){
-        if (urls.length >= 2) break;
-        const b = bin(ip); if (!b) continue;
-        try{
-          const bm = await createImageBitmap(new Blob([b]));
-          if (bm.width < 150 || bm.height < 100 || bm.width/bm.height < 0.35 || bm.width/bm.height > 3) continue;   // logos / icons / rules
-          const sc = Math.min(1, 720/bm.width), cv = document.createElement('canvas'); cv.width = Math.round(bm.width*sc); cv.height = Math.round(bm.height*sc);
-          const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(bm, 0, 0, cv.width, cv.height); urls.push(cv.toDataURL('image/jpeg', 0.8));
-        }catch(e){}
-      }
-      if (urls.length) res[sh.name] = urls;
-    }
-  }catch(e){ console.warn('Workbook photo extraction failed:', e && e.message); }
-  return res;
-}
 function handleFile(file){
   if (typeof XLSX === 'undefined'){
     setStatus('The spreadsheet reader could not load. This tool needs an internet connection when it opens — connect, reload the page, and try again.', 'err');
@@ -3551,16 +3465,14 @@ function handleFile(file){
     try{
       const data = new Uint8Array(ev.target.result);
       const wbObj = XLSX.read(data, {type:'array', cellDates:false, sheetStubs:false});
-      const photosP = xlsxExtractTabPhotos(data);
       const prev = {ROWS, paxByDish, eventDateByDish};   // restored if this file turns out unreadable
-      ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; dishPhotoStore = {}; methodCrops = {};  // a spreadsheet has no page image or method text to keep
+      ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};  // a spreadsheet has no page image or method text to keep
       const {sheetsUsed, itemsFound, skipped, errored} = processWorkbook(wbObj);
       if (itemsFound===0){
         ({ROWS, paxByDish, eventDateByDish} = prev);
         setStatus('Could not find any recipe rows in "'+file.name+'". Each dish needs a table with a column headed Item, Ingredient or Product (quantity and unit beside it), or a PAX cell above the list — or use the paste box. Your previous list has been kept.', 'err');
         return;
       }
-      photosP.then(map=>{ let n = 0; Object.keys(map).forEach(tab=>{ const d = (ROWS.find(r=>r.srcSheet===tab)||{}).dish; if (d && !dishPhotoStore[d]){ dishPhotoStore[d] = map[tab]; n++; } }); if (n){ try{ saveOnetimeSession(); }catch(e){} render(); } });
       document.getElementById('fileTag').textContent = file.name;
       const dishNames = [];
       ROWS.forEach(r=>{ const n=cleanDishName(r.dish); if(!dishNames.includes(n)) dishNames.push(n); });
@@ -3595,7 +3507,7 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
   if (!raw.trim()){ setStatus('Paste some rows first.', 'err'); return; }
   const lines = raw.split(/\r?\n/).filter(l=>l.trim());
   const prevPaste = {ROWS, paxByDish, eventDateByDish};
-  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; dishPhotoStore = {}; methodCrops = {};
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
   const items = [];
   const numLike = v => /^\s*\d+([.,]\d+)?(\s*\/\s*\d+)?\s*[a-zA-Z]*\s*$/.test(v||'');
   lines.forEach(line=>{
@@ -3629,7 +3541,7 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('clearBtn').addEventListener('click', ()=>{
-  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; dishPhotoStore = {}; methodCrops = {}; document.getElementById('pasteBox').value=''; document.getElementById('fileInput').value='';
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {}; document.getElementById('pasteBox').value=''; document.getElementById('fileInput').value='';
   document.getElementById('fileTag').textContent='no file loaded';
   sourceInfo = {name: null, loadedAt: null};
   setStatus(''); renderApp();
@@ -4512,15 +4424,6 @@ function methodCropsPageHtml(rows){
     ${items}
   </div>`;
 }
-// photos pulled from the dish's production tool (v3.4.9-r4): shown with that dish's own prep list section, screen + print (7 cm wide)
-function dishPhotosFor(dish){ const out = (dishPhotoStore[dish]||[]).slice(); (originalPageImages[dish]||[]).forEach(e=>(e.photos||[]).forEach(u=>out.push(u))); return out.slice(0,2); }
-function dishThumbsHtml(rows, cls){
-  const seen = []; (rows||[]).forEach(r=>{ if (!seen.includes(r.dish)) seen.push(r.dish); });
-  const items = seen.map(d=>({d, ph: dishPhotosFor(d)[0]})).filter(x=>x.ph);
-  if (!items.length) return '';
-  return `<div class="dish-thumbs ${cls||''}">${items.map(x=>`<figure class="dish-thumb"><img class="dish-photo-thumb" src="${x.ph}" alt="${escapeHtml(cleanDishName(x.d))}"><figcaption>${escapeHtml(cleanDishName(x.d))}</figcaption></figure>`).join('')}</div>`;
-}
-function dishPhotosHtml(dish, cls){ const ph = dishPhotosFor(dish); return ph.length ? `<div class="dish-photos ${cls||''}">${ph.map(u=>`<img class="dish-photo" src="${u}" alt="${escapeHtml(cleanDishName(dish))}">`).join('')}</div>` : ''; }
 function renderByDish(){
   let dishes = [];
   activeRows().forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
@@ -4564,7 +4467,6 @@ function renderByDish(){
           ${originalPageImages[dish] ? `<button class="ghost" onclick="openOriginalViewer('${encDish}')" type="button">📖 View original${originalPageImages[dish].length>1?' ('+originalPageImages[dish].length+' pages)':''}</button>` : ''}
         </div>
       </div>
-      ${dishPhotosHtml(dish, 'no-print')}
       ${similarBarHtml(dish)}
       ${bulkMoveToolbarHtml(rows)}
       <div class="section-table-wrap no-print">
@@ -4608,7 +4510,6 @@ function renderByDish(){
           ${dishAllergenLineHtml(dish)}
         </div>
         ${alPrintNote(rows)}
-        ${dishPhotosHtml(dish, 'photos-print')}
         <table><thead><tr><th>Ingredient / prep task</th><th>Per pax</th><th>Total to make</th><th>Section</th><th>Prep day</th></tr></thead><tbody>
         ${rows.map((r,i)=>{
           const total = computeTotal(r);
@@ -4709,7 +4610,7 @@ function renderByPriority(){
         <button class="ghost" onclick="copyPriority('${d}', '${key}-${d}')" type="button">Copy as text</button>
       </div>
     </div>
-    ${dishThumbsHtml(rowsForDay, "no-print")}<div class="section-table-wrap no-print">`;
+    <div class="section-table-wrap no-print">`;
 
     if (consolidateOn){
       html += `<table><thead><tr>
@@ -4803,7 +4704,6 @@ function renderByPriority(){
     html += `<div class="print-only" id="print-priority-${key}-${d}">
       ${pdfCookedBannerHtml(rowsForDay)}
       ${paxReferenceBlock(rowsForDay)}
-      ${dishThumbsHtml(rowsForDay, "photos-print")}
       <div class="print-head">
         <h2>${heading}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForDay.length+' tasks)' : rowsForDay.length+' tasks'} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)</div>
@@ -4899,7 +4799,7 @@ function renderBySection(){
         <button class="ghost share-btn" onclick="openShareSection('${s}')" type="button" title="QR code and link that open this list read-only on a phone">📱 Share to phone</button>
       </div>
     </div>
-    ${dishThumbsHtml(rowsForSection, "no-print")}<div class="section-table-wrap no-print">`;
+    <div class="section-table-wrap no-print">`;
 
     if (consolidateOn){
       html += `<table><thead><tr>
@@ -4996,7 +4896,6 @@ function renderBySection(){
     html += `<div class="print-only" id="print-${key}">
       ${pdfCookedBannerHtml(rowsForSection)}
       ${paxReferenceBlock(rowsForSection)}
-      ${dishThumbsHtml(rowsForSection, "photos-print")}
       <div class="print-head">
         <h2>${s} — ${escapeHtml(leaderBySection[s] || 'Team Leader TBC')}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForSection.length+' tasks)' : rowsForSection.length+' tasks'}</div>
@@ -5378,7 +5277,7 @@ function loadTemplate(enc){
   const name = decodeURIComponent(enc); const t = getTemplates()[name];
   if (!t || !Array.isArray(t.ROWS)){ proStatus('That template could not be read.', 'err'); return; }
   const isObj = v => v && typeof v==='object' && !Array.isArray(v);
-  originalPageImages = {}; dishPhotoStore = {}; methodCrops = {};   // v3: a template keeps the list only, not page images
+  originalPageImages = {}; methodCrops = {};   // v3: a template keeps the list only, not page images
   ROWS = t.ROWS.filter(r=>r && typeof r.task==='string' && typeof r.dish==='string').map(r=>{
     const ok = SECTIONS.includes(r.section);
     return {...r, section: ok ? r.section : 'Vegetables', baseCategory: SECTIONS.includes(r.baseCategory) ? r.baseCategory : (ok ? r.section : 'Vegetables'), flagged: ok ? !!r.flagged : true};
@@ -6286,7 +6185,7 @@ function sampleActive(){ return ROWS.length>0 && !!sourceInfo && sourceInfo.name
 function loadSampleMenu(){
   if (ROWS.length && !sampleActive() && !confirm('Replace the current list with the sample menu? The current list will be cleared (print or export it first if you need it).')) return;
   toolMode = 'onetime';
-  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; dishPhotoStore = {}; methodCrops = {}; dishIncluded = {};
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {}; dishIncluded = {};
   SAMPLE_MENU.forEach(d=>{
     eventDayOverride[d.dish] = d.day;
     paxByDish[d.dish] = d.pax;
