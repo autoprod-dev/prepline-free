@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<meta name="prepline-version" content="3.4.9-r4">
+<meta name="prepline-version" content="3.4.9-r5">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -486,6 +486,8 @@ var LICENSE_CONFIG = {
   .al-chip{display:inline-block; font:700 9.5px/1 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; letter-spacing:.03em; padding:2px 5px; margin:0 0 0 4px; border-radius:4px; background:#FBE6D6; color:#8A3B12; border:1px solid #E9C3A3; vertical-align:middle;}
   .po-chip{display:inline-block; font:600 10px/1.2 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; padding:2px 6px; margin:2px 0 0 4px; border-radius:4px; background:#E4F0E6; color:#22543D; border:1px solid #B5D3BC; vertical-align:middle; white-space:normal;}
   .po-ref-l{font-weight:800; letter-spacing:.06em; margin-right:2px;}
+  .dish-thumbs{display:flex; gap:12px; flex-wrap:wrap; margin:8px 0 12px;} .dish-thumb{margin:0; width:4.5cm; max-width:46%;} .dish-photo-thumb{width:100%; height:auto; border-radius:6px; border:1px solid var(--line); display:block;} .dish-thumb figcaption{font-size:11.5px; font-weight:600; margin-top:3px; line-height:1.25;}
+  @media print{ .dish-thumbs.photos-print{display:flex; gap:10px; margin:6px 0 10px; page-break-inside:avoid;} .dish-thumb{width:4.5cm; max-width:none;} .dish-photo-thumb{border-radius:0;} .dish-thumb figcaption{font-size:9pt;} }
   .dish-photos{display:flex; gap:12px; flex-wrap:wrap; margin:8px 0 12px;} .dish-photo{width:7cm; max-width:100%; height:auto; border-radius:6px; border:1px solid var(--line); display:block;}
   @media print{ .dish-photos.photos-print{display:flex; gap:10px; margin:6px 0 10px; page-break-inside:avoid;} .dish-photo{width:7cm; border-radius:0;} }
   .orig-page{margin:12px 0; text-align:center;} .orig-img{max-width:100%; height:auto; border:1px solid var(--line);} .orig-head{text-align:left; margin-bottom:4px;}
@@ -830,7 +832,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r4</div>
+    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r5</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -4512,6 +4514,12 @@ function methodCropsPageHtml(rows){
 }
 // photos pulled from the dish's production tool (v3.4.9-r4): shown with that dish's own prep list section, screen + print (7 cm wide)
 function dishPhotosFor(dish){ const out = (dishPhotoStore[dish]||[]).slice(); (originalPageImages[dish]||[]).forEach(e=>(e.photos||[]).forEach(u=>out.push(u))); return out.slice(0,2); }
+function dishThumbsHtml(rows, cls){
+  const seen = []; (rows||[]).forEach(r=>{ if (!seen.includes(r.dish)) seen.push(r.dish); });
+  const items = seen.map(d=>({d, ph: dishPhotosFor(d)[0]})).filter(x=>x.ph);
+  if (!items.length) return '';
+  return `<div class="dish-thumbs ${cls||''}">${items.map(x=>`<figure class="dish-thumb"><img class="dish-photo-thumb" src="${x.ph}" alt="${escapeHtml(cleanDishName(x.d))}"><figcaption>${escapeHtml(cleanDishName(x.d))}</figcaption></figure>`).join('')}</div>`;
+}
 function dishPhotosHtml(dish, cls){ const ph = dishPhotosFor(dish); return ph.length ? `<div class="dish-photos ${cls||''}">${ph.map(u=>`<img class="dish-photo" src="${u}" alt="${escapeHtml(cleanDishName(dish))}">`).join('')}</div>` : ''; }
 function renderByDish(){
   let dishes = [];
@@ -4701,7 +4709,7 @@ function renderByPriority(){
         <button class="ghost" onclick="copyPriority('${d}', '${key}-${d}')" type="button">Copy as text</button>
       </div>
     </div>
-    <div class="section-table-wrap no-print">`;
+    ${dishThumbsHtml(rowsForDay, "no-print")}<div class="section-table-wrap no-print">`;
 
     if (consolidateOn){
       html += `<table><thead><tr>
@@ -4795,6 +4803,7 @@ function renderByPriority(){
     html += `<div class="print-only" id="print-priority-${key}-${d}">
       ${pdfCookedBannerHtml(rowsForDay)}
       ${paxReferenceBlock(rowsForDay)}
+      ${dishThumbsHtml(rowsForDay, "photos-print")}
       <div class="print-head">
         <h2>${heading}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForDay.length+' tasks)' : rowsForDay.length+' tasks'} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)</div>
@@ -4890,7 +4899,7 @@ function renderBySection(){
         <button class="ghost share-btn" onclick="openShareSection('${s}')" type="button" title="QR code and link that open this list read-only on a phone">📱 Share to phone</button>
       </div>
     </div>
-    <div class="section-table-wrap no-print">`;
+    ${dishThumbsHtml(rowsForSection, "no-print")}<div class="section-table-wrap no-print">`;
 
     if (consolidateOn){
       html += `<table><thead><tr>
@@ -4987,6 +4996,7 @@ function renderBySection(){
     html += `<div class="print-only" id="print-${key}">
       ${pdfCookedBannerHtml(rowsForSection)}
       ${paxReferenceBlock(rowsForSection)}
+      ${dishThumbsHtml(rowsForSection, "photos-print")}
       <div class="print-head">
         <h2>${s} — ${escapeHtml(leaderBySection[s] || 'Team Leader TBC')}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForSection.length+' tasks)' : rowsForSection.length+' tasks'}</div>
